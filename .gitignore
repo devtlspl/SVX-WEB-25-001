@@ -1,0 +1,55 @@
+# General
+*.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+frontend/.env.test.local
+
+# Vite
+frontend/.vite-cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# ASP.NET / Visual Studio
+Backend/bin/
+Backend/obj/
+Backend/.vs/
+.vs/
+*.dbmdl
+*.dbproj.schemaview
+Generated\ Files/
+
+# Entity Framework
+Backend/Migrations/
+
+# Logs
+logs/
+*.nlog
+*.tlog
+
+# Razorpay keys or sensitive overrides
+Backend/appsettings.Development.json
+Backend/appsettings.Local.json
+Backend/appsettings.*.local.json
+
+# PowerShell history
+*.pshistory
+
+# Backup files
+*.bak
+*.bak2
+*.orig
