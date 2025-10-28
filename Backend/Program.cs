@@ -15,7 +15,7 @@ var configuration = builder.Configuration;
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -39,20 +39,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendClient", policy =>
     {
-        var origins = configuration.GetSection("AllowedClients").Get<string[]>();
-        if (origins is { Length: > 0 })
-        {
-            policy.WithOrigins(origins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        }
-        else
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
     });
 });
 
@@ -84,6 +73,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 if (app.Environment.IsDevelopment())
 {
