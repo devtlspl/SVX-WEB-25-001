@@ -51,6 +51,11 @@ public class PaymentController : ControllerBase
             return Unauthorized();
         }
 
+        if (string.IsNullOrWhiteSpace(request.PaymentId))
+        {
+            return BadRequest(new { message = "Payment id is required." });
+        }
+
         try
         {
             await _paymentService.VerifyPaymentAsync(user, request.OrderId, request.PaymentId, request.Signature);
@@ -88,9 +93,9 @@ public class PaymentController : ControllerBase
 
     public class VerifyPaymentRequest
     {
-        public string OrderId { get; set; } = string.Empty;
+        public string? OrderId { get; set; }
         public string PaymentId { get; set; } = string.Empty;
-        public string Signature { get; set; } = string.Empty;
+        public string? Signature { get; set; }
     }
 
     public class RazorpayWebhookPayload

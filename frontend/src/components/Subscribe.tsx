@@ -30,6 +30,7 @@ const Subscribe = () => {
     try {
       const response = await API.post<RazorpayOrderPayload>("/payment/create-order", {});
       const order = response.data;
+      const createdOrderId = order.orderId;
 
       if (typeof window.Razorpay === "undefined") {
         setStatus({
@@ -47,11 +48,24 @@ const Subscribe = () => {
         description: "Full access subscription",
         order_id: order.orderId,
         handler: async (razorpayResponse: RazorpayHandlerResponse) => {
+          console.log("Razorpay response", razorpayResponse);
+          const paymentId = razorpayResponse.razorpay_payment_id;
+          const orderId = razorpayResponse.razorpay_order_id ?? createdOrderId ?? null;
+          const signature = razorpayResponse.razorpay_signature ?? null;
+
+          if (!paymentId) {
+            setStatus({
+              type: "error",
+              message: "Missing payment confirmation from Razorpay. Please retry the payment."
+            });
+            return;
+          }
+
           try {
             await API.post("/payment/verify", {
-              orderId: razorpayResponse.razorpay_order_id,
-              paymentId: razorpayResponse.razorpay_payment_id,
-              signature: razorpayResponse.razorpay_signature
+              orderId,
+              paymentId,
+              signature
             });
             setStatus({ type: "success", message: "Payment verified. Subscription activated." });
             await refreshUser();
@@ -73,6 +87,13 @@ const Subscribe = () => {
       };
 
       const razorpay = new window.Razorpay(options);
+      razorpay.on("payment.failed", (response) => {
+        console.error("Razorpay payment failed", response);
+        setStatus({
+          type: "error",
+          message: response.error?.description ?? "Payment was not completed. Please try again."
+        });
+      });
       razorpay.open();
     } catch (error: unknown) {
       const message =

@@ -1,11 +1,11 @@
+using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
 using Backend.Data;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Razorpay.Api;
+using Razorpay.Api.Errors;
 
 namespace Backend.Services;
 
@@ -38,41 +38,80 @@ public class PaymentService : IPaymentService
         return Task.FromResult(order);
     }
 
-    public async Task VerifyPaymentAsync(User user, string orderId, string paymentId, string signature)
+    public async Task VerifyPaymentAsync(User user, string? orderId, string paymentId, string? signature)
     {
-        var generatedSignature = GenerateSignature($"{orderId}|{paymentId}", _settings.KeySecret);
-        if (!CryptographicEquals(generatedSignature, signature))
+        if (string.IsNullOrWhiteSpace(paymentId))
         {
-            throw new InvalidOperationException("Invalid payment signature.");
+            throw new InvalidOperationException("Missing payment verification parameters.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(orderId) && !string.IsNullOrWhiteSpace(signature))
+        {
+            var attributes = new Dictionary<string, string>
+            {
+                { "razorpay_order_id", orderId },
+                { "razorpay_payment_id", paymentId },
+                { "razorpay_signature", signature }
+            };
+
+            try
+            {
+                Utils.verifyPaymentSignature(attributes);
+            }
+            catch (SignatureVerificationError ex)
+            {
+                throw new InvalidOperationException("Invalid payment signature.", ex);
+            }
+        }
+        else
+        {
+            Payment payment;
+            try
+            {
+                payment = _razorpayClient.Payment.Fetch(paymentId);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Could not fetch payment details from Razorpay.", ex);
+            }
+
+            var status = payment["status"]?.ToString();
+            if (string.Equals(status, "authorized", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var captureOptions = new Dictionary<string, object>
+                    {
+                        { "amount", payment["amount"] },
+                        { "currency", payment["currency"] ?? _settings.Currency }
+                    };
+                    payment = payment.Capture(captureOptions);
+                    status = payment["status"]?.ToString();
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Payment is authorized but could not be captured automatically.", ex);
+                }
+            }
+
+            if (!string.Equals(status, "captured", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Payment is not completed. Current status: {status ?? "unknown"}.");
+            }
+
+            var paymentOrderId = payment["order_id"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(orderId) &&
+                !string.Equals(paymentOrderId, orderId, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Payment does not correspond to the supplied order.");
+            }
+
+            orderId ??= paymentOrderId;
         }
 
         user.IsSubscribed = true;
         user.SubscriptionId = paymentId;
         _dbContext.Users.Update(user);
         await _dbContext.SaveChangesAsync();
-    }
-
-    private static string GenerateSignature(string payload, string key)
-    {
-        var keyBytes = Encoding.UTF8.GetBytes(key);
-        using var hmac = new HMACSHA256(keyBytes);
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
-    private static bool CryptographicEquals(string a, string b)
-    {
-        if (a.Length != b.Length)
-        {
-            return false;
-        }
-
-        var result = 0;
-        for (var i = 0; i < a.Length; i++)
-        {
-            result |= a[i] ^ b[i];
-        }
-
-        return result == 0;
     }
 }
