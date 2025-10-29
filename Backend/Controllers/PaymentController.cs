@@ -6,6 +6,8 @@ using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
+using Backend.Serialization;
 
 namespace Backend.Controllers;
 
@@ -59,6 +61,9 @@ public class PaymentController : ControllerBase
         try
         {
             await _paymentService.VerifyPaymentAsync(user, request.OrderId, request.PaymentId, request.Signature);
+            user.IsRegistrationComplete = true;
+            user.PaymentVerifiedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
             return Ok(new { message = "Subscription activated." });
         }
         catch (InvalidOperationException ex)
@@ -93,8 +98,13 @@ public class PaymentController : ControllerBase
 
     public class VerifyPaymentRequest
     {
+        [JsonConverter(typeof(FlexibleStringConverter))]
         public string? OrderId { get; set; }
+
+        [JsonConverter(typeof(FlexibleStringConverter))]
         public string PaymentId { get; set; } = string.Empty;
+
+        [JsonConverter(typeof(FlexibleStringConverter))]
         public string? Signature { get; set; }
     }
 

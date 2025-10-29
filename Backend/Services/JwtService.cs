@@ -17,7 +17,7 @@ public class JwtService : IJwtService
         _settings = options.Value;
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, string sessionId)
     {
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
@@ -28,12 +28,23 @@ public class JwtService : IJwtService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Name),
-            new("isSubscribed", user.IsSubscribed.ToString())
+            new("isSubscribed", user.IsSubscribed.ToString()),
+            new("sessionId", sessionId)
         };
+
+        if (!string.IsNullOrWhiteSpace(user.PhoneNumber))
+        {
+            claims.Add(new Claim("phoneNumber", user.PhoneNumber));
+        }
 
         if (!string.IsNullOrWhiteSpace(user.SubscriptionId))
         {
             claims.Add(new Claim("subscriptionId", user.SubscriptionId!));
+        }
+
+        if (user.IsAdmin)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, "admin"));
         }
 
         var token = new JwtSecurityToken(

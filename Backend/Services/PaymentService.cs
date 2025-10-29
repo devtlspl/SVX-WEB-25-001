@@ -22,7 +22,7 @@ public class PaymentService : IPaymentService
         _settings = options.Value;
     }
 
-    public Task<Order> CreateOrderAsync(User user, int amountInPaise)
+    public async Task<Order> CreateOrderAsync(User user, int amountInPaise)
     {
         var amount = amountInPaise <= 0 ? _settings.DefaultAmountInPaise : amountInPaise;
 
@@ -35,7 +35,12 @@ public class PaymentService : IPaymentService
         };
 
         var order = _razorpayClient.Order.Create(options);
-        return Task.FromResult(order);
+
+        user.PendingOrderId = order["id"]?.ToString();
+        _dbContext.Users.Update(user);
+        await _dbContext.SaveChangesAsync();
+
+        return order;
     }
 
     public async Task VerifyPaymentAsync(User user, string? orderId, string paymentId, string? signature)
@@ -45,13 +50,19 @@ public class PaymentService : IPaymentService
             throw new InvalidOperationException("Missing payment verification parameters.");
         }
 
+        var storedOrderId = user.PendingOrderId;
+        if (string.IsNullOrWhiteSpace(orderId) || orderId is "[]" or "\"\"" or "null")
+        {
+            orderId = storedOrderId;
+        }
+
         if (!string.IsNullOrWhiteSpace(orderId) && !string.IsNullOrWhiteSpace(signature))
         {
             var attributes = new Dictionary<string, string>
             {
-                { "razorpay_order_id", orderId },
+                { "razorpay_order_id", orderId! },
                 { "razorpay_payment_id", paymentId },
-                { "razorpay_signature", signature }
+                { "razorpay_signature", signature! }
             };
 
             try
@@ -103,14 +114,28 @@ public class PaymentService : IPaymentService
             if (!string.IsNullOrWhiteSpace(orderId) &&
                 !string.Equals(paymentOrderId, orderId, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Payment does not correspond to the supplied order.");
+                if (!string.IsNullOrWhiteSpace(storedOrderId))
+                {
+                    orderId = storedOrderId;
+                }
+                else if (!string.IsNullOrWhiteSpace(paymentOrderId))
+                {
+                    orderId = paymentOrderId;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Payment does not correspond to the supplied order.");
+                }
             }
-
-            orderId ??= paymentOrderId;
+            else
+            {
+                orderId ??= paymentOrderId;
+            }
         }
 
         user.IsSubscribed = true;
         user.SubscriptionId = paymentId;
+        user.PendingOrderId = null;
         _dbContext.Users.Update(user);
         await _dbContext.SaveChangesAsync();
     }

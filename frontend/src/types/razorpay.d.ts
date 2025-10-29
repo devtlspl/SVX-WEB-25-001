@@ -19,6 +19,7 @@ export type RazorpayOptions = {
   theme?: {
     color?: string;
   };
+  notes?: Record<string, string>;
 };
 
 export type RazorpayOrderPayload = {

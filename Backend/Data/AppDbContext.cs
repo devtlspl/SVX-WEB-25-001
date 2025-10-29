@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserOtp> UserOtps => Set<UserOtp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,5 +19,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
             .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.PhoneNumber)
+            .IsUnique();
+
+        modelBuilder.Entity<UserOtp>()
+            .HasIndex(o => new { o.UserId, o.Purpose, o.Consumed });
     }
 }

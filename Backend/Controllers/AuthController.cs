@@ -1,13 +1,13 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Backend.Data;
 using Backend.Models;
 using Backend.Services;
-using Backend.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace Backend.Controllers;
 
@@ -34,7 +34,16 @@ public class AuthController : ControllerBase
 
         try
         {
-            var user = await _authService.RegisterAsync(request.Name, request.Email, request.Password);
+            var user = await _authService.RegisterAsync(new RegisterUserRequest(
+                request.Name,
+                request.Email,
+                request.PhoneNumber,
+                request.Password,
+                request.GovernmentIdType,
+                request.GovernmentIdNumber,
+                request.GovernmentDocumentUrl,
+                request.AcceptTerms));
+
             return Ok(UserResponse.FromUser(user));
         }
         catch (InvalidOperationException ex)
@@ -43,8 +52,8 @@ public class AuthController : ControllerBase
         }
     }
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    [HttpPost("admin/login")]
+    public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -53,12 +62,52 @@ public class AuthController : ControllerBase
 
         try
         {
-            var (user, token) = await _authService.LoginAsync(request.Email, request.Password);
-            return Ok(new LoginResponse
+            var (user, token) = await _authService.AdminLoginAsync(request.Email, request.Password);
+            return Ok(new LoginResponse(token, UserResponse.FromUser(user)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("login/request-otp")]
+    public async Task<IActionResult> RequestOtp([FromBody] RequestOtpRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        try
+        {
+            var result = await _authService.RequestLoginOtpAsync(request.PhoneNumber, request.Password);
+            return Ok(new
             {
-                Token = token,
-                User = UserResponse.FromUser(user)
+                message = $"OTP sent to {result.MaskedPhoneNumber}",
+                expiresAt = result.ExpiresAt,
+                isActive = result.IsRegistrationComplete,
+                debugCode = result.DebugCode
             });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("login/verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        try
+        {
+            var (user, token) = await _authService.VerifyLoginOtpAsync(request.PhoneNumber, request.Code);
+            return Ok(new LoginResponse(token, UserResponse.FromUser(user)));
         }
         catch (InvalidOperationException ex)
         {
@@ -98,11 +147,29 @@ public class AuthController : ControllerBase
         public string Email { get; set; } = string.Empty;
 
         [Required]
+        [Phone]
+        [MaxLength(20)]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        [Required]
         [MinLength(6)]
         public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string GovernmentIdType { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string GovernmentIdNumber { get; set; } = string.Empty;
+
+        [MaxLength(256)]
+        public string? GovernmentDocumentUrl { get; set; }
+
+        public bool AcceptTerms { get; set; }
     }
 
-    public class LoginRequest
+    public class AdminLoginRequest
     {
         [Required]
         [EmailAddress]
@@ -112,15 +179,60 @@ public class AuthController : ControllerBase
         public string Password { get; set; } = string.Empty;
     }
 
-    public class LoginResponse
+    public class RequestOtpRequest
     {
-        public required string Token { get; set; }
-        public required UserResponse User { get; set; }
+        [Required]
+        [Phone]
+        [MaxLength(20)]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
     }
 
-    public record UserResponse(Guid Id, string Name, string Email, bool IsSubscribed, string? SubscriptionId)
+    public class VerifyOtpRequest
+    {
+        [Required]
+        [Phone]
+        [MaxLength(20)]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(6)]
+        public string Code { get; set; } = string.Empty;
+    }
+
+    public record LoginResponse(string Token, UserResponse User);
+
+    public record UserResponse(
+        Guid Id,
+        string Name,
+        string Email,
+        string PhoneNumber,
+        bool IsSubscribed,
+        bool IsRegistrationComplete,
+        bool KycVerified,
+        string? SubscriptionId,
+        DateTime? PaymentVerifiedAt,
+        string? GovernmentIdType,
+        string? GovernmentIdNumber,
+        string? GovernmentDocumentUrl,
+        bool IsAdmin)
     {
         public static UserResponse FromUser(User user) =>
-            new(user.Id, user.Name, user.Email, user.IsSubscribed, user.SubscriptionId);
+            new(
+                user.Id,
+                user.Name,
+                user.Email,
+                user.PhoneNumber,
+                user.IsSubscribed,
+                user.IsRegistrationComplete,
+                user.KycVerified,
+                user.SubscriptionId,
+                user.PaymentVerifiedAt,
+                user.GovernmentIdType,
+                user.GovernmentIdNumber,
+                user.GovernmentDocumentUrl,
+                user.IsAdmin);
     }
 }

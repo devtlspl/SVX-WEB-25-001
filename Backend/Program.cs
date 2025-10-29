@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -64,6 +65,33 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = issuer,
         IssuerSigningKey = signingKey
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var userIdClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var sessionIdClaim = context.Principal?.FindFirstValue("sessionId");
+
+            if (string.IsNullOrWhiteSpace(userIdClaim) || string.IsNullOrWhiteSpace(sessionIdClaim))
+            {
+                context.Fail("Invalid session.");
+                return;
+            }
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid session.");
+                return;
+            }
+
+            var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId);
+            if (user is null || string.IsNullOrWhiteSpace(user.CurrentSessionId) || !string.Equals(user.CurrentSessionId, sessionIdClaim, StringComparison.Ordinal))
+            {
+                context.Fail("Session expired.");
+            }
+        }
     };
 });
 

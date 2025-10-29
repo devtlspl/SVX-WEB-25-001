@@ -15,8 +15,16 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  phoneNumber: string;
   isSubscribed: boolean;
+  isRegistrationComplete: boolean;
+  kycVerified: boolean;
   subscriptionId?: string | null;
+  paymentVerifiedAt?: string | null;
+  governmentIdType?: string | null;
+  governmentIdNumber?: string | null;
+  governmentDocumentUrl?: string | null;
+  isAdmin: boolean;
 };
 
 type LoginPayload = {
