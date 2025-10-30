@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
@@ -21,6 +21,8 @@ const DashboardBilling = () => {
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState<boolean>(true);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [previewInvoice, setPreviewInvoice] = useState<{ invoice: BillingInvoice; content: string } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const loadInvoices = async () => {
@@ -76,6 +78,19 @@ const DashboardBilling = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       setInvoiceError("Unable to download the invoice. Please try again.");
+    }
+  };
+
+  const viewInvoice = async (invoice: BillingInvoice) => {
+    setPreviewLoading(true);
+    setInvoiceError(null);
+    try {
+      const response = await API.get<string>(`/billing/invoices/${invoice.id}/download`, { responseType: "text" });
+      setPreviewInvoice({ invoice, content: response.data });
+    } catch (error) {
+      setInvoiceError("Unable to load the invoice preview. Please try again.");
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -148,8 +163,15 @@ const DashboardBilling = () => {
                     <td className="px-3 py-3">
                       <button
                         type="button"
-                        onClick={() => downloadInvoice(invoice)}
+                        onClick={() => viewInvoice(invoice)}
                         className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadInvoice(invoice)}
+                        className="ml-2 rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                       >
                         Download
                       </button>
@@ -158,6 +180,30 @@ const DashboardBilling = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {previewInvoice && (
+          <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Invoice #{previewInvoice.invoice.invoiceNumber}</p>
+                <p className="text-xs text-slate-500">Issued {new Date(previewInvoice.invoice.issuedAt).toLocaleString()}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewInvoice(null)}
+                className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+            {previewLoading ? (
+              <p className="mt-3 text-xs text-slate-500">Loading invoice...</p>
+            ) : (
+              <pre className="mt-3 max-h-60 overflow-auto rounded-md bg-white p-3 text-xs text-slate-600">
+                {previewInvoice.content}
+              </pre>
+            )}
           </div>
         )}
       </div>

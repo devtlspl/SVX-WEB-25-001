@@ -32,6 +32,11 @@ public class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
+        if (!request.AcceptTerms)
+        {
+            return BadRequest(new { message = "You must accept the user agreement to create an account." });
+        }
+
         try
         {
             var user = await _authService.RegisterAsync(new RegisterUserRequest(
@@ -221,6 +226,8 @@ public class AuthController : ControllerBase
         string? GovernmentIdType,
         string? GovernmentIdNumber,
         string? GovernmentDocumentUrl,
+        DateTime? TermsAcceptedAt,
+        DateTime? RiskPolicyAcceptedAt,
         bool IsAdmin)
     {
         public static UserResponse FromUser(User user) =>
@@ -241,6 +248,8 @@ public class AuthController : ControllerBase
                 user.GovernmentIdType,
                 user.GovernmentIdNumber,
                 user.GovernmentDocumentUrl,
+                user.TermsAcceptedAt,
+                user.RiskPolicyAcceptedAt,
                 user.IsAdmin);
     }
 }

@@ -55,7 +55,9 @@ public class AuthService : IAuthService
             IsSubscribed = false,
             IsRegistrationComplete = false,
             KycVerified = true,
-            IsAdmin = false
+            IsAdmin = false,
+            TermsAcceptedAt = DateTime.UtcNow,
+            RiskPolicyAcceptedAt = DateTime.UtcNow
         };
 
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);

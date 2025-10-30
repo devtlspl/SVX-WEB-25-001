@@ -28,6 +28,8 @@ export type User = {
   governmentIdType?: string | null;
   governmentIdNumber?: string | null;
   governmentDocumentUrl?: string | null;
+  termsAcceptedAt?: string | null;
+  riskPolicyAcceptedAt?: string | null;
   isAdmin: boolean;
 };
 

@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
+﻿import type { ReactElement, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Register from "./components/Register";
 import Login from "./components/Login";
@@ -249,6 +249,67 @@ const Home = () => {
         ))}
       </section>
 
+      <section className="grid gap-6 rounded-3xl border border-slate-200 bg-white p-10 shadow-lg shadow-slate-100 md:grid-cols-[1.1fr_1fr] md:items-center">
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand">Welcome walkthrough</p>
+          <h2 className="text-3xl font-bold leading-tight text-slate-900">Getting started in a few minutes</h2>
+          <p className="text-sm text-slate-600">
+            Follow these quick steps to go from signing in to watching live trading dashboards and downloading invoices.
+          </p>
+          <ol className="space-y-3 text-sm text-slate-600">
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-white">1</span>
+              Create a workspace or log in with your registered number and password.
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-white">2</span>
+              Enter the OTP we send to your phone to secure the session.
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-white">3</span>
+              Activate a paid plan on the billing page to unlock live dashboards and invoices.
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-semibold text-white">4</span>
+              Explore the sidebar tabs for market metrics, plan details, and downloadable receipts.
+            </li>
+          </ol>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to={user ? "/dashboard" : "/login"}
+              className="inline-flex items-center rounded-md bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
+            >
+              {user ? "Go to dashboard" : "Log in"}
+            </Link>
+            {!user && (
+              <Link
+                to="/register"
+                className="inline-flex items-center rounded-md border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Create workspace
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
+          <p className="font-semibold text-slate-900">Quick tips</p>
+          <ul className="space-y-2">
+            <li className="flex gap-3">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brand" />
+              Use the billing screen to download invoices immediately after each payment.
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brand" />
+              Switch between plans any time; the dashboard updates the active tier automatically.
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-brand" />
+              Need help? Head to the support tab for email, Slack, and office hour details.
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="grid gap-8 rounded-3xl bg-white p-10 shadow-lg shadow-slate-100 md:grid-cols-[1.15fr_1fr] md:items-center">
         <div className="space-y-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand">Quick launch</p>
@@ -350,6 +411,46 @@ const Home = () => {
         </div>
       </section>
 
+      <section className="grid gap-6 rounded-3xl border border-slate-200 bg-white p-10 shadow-lg shadow-slate-100 md:grid-cols-2">
+        <article className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <h3 className="text-lg font-semibold text-slate-900">User agreement</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Every workspace abides by the SVX Intelligence user agreement. It covers acceptable use, API limits, billing terms,
+            and data retention so your teams know exactly how the platform behaves.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-600">
+            <li>• Access is personal and OTP secured.</li>
+            <li>• Plans renew automatically unless cancelled.</li>
+            <li>• Data exports remain available while subscriptions stay active.</li>
+          </ul>
+          <Link
+            to="/support"
+            className="mt-4 inline-flex items-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Review agreement
+          </Link>
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <h3 className="text-lg font-semibold text-slate-900">Trading risk policy</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            SVX Intelligence surfaces market signals and analytics. It does not execute trades or provide investment advice.
+            Always validate insights against your internal controls and risk guidelines.
+          </p>
+          <ul className="mt-4 space-y-2 text-sm text-slate-600">
+            <li>• Markets can move quickly; review alerts before acting.</li>
+            <li>• Keep compliance teams copied on automation workflows.</li>
+            <li>• Contact support if you spot unusual data behaviour.</li>
+          </ul>
+          <Link
+            to="/support"
+            className="mt-4 inline-flex items-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            View risk policy
+          </Link>
+        </article>
+      </section>
+
       <section className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-lg shadow-slate-100">
         <h2 className="text-3xl font-bold text-slate-900">Ready when you are</h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600">
@@ -437,3 +538,5 @@ const App = () => (
 );
 
 export default App;
+
+

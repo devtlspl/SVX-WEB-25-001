@@ -76,4 +76,8 @@ public class User
 
     [MaxLength(10)]
     public string? PendingPlanCurrency { get; set; }
+
+    public DateTime? TermsAcceptedAt { get; set; }
+
+    public DateTime? RiskPolicyAcceptedAt { get; set; }
 }

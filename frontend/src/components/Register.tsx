@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { API } from "../api";
+import { RISK_POLICY_POINTS, USER_AGREEMENT_POINTS } from "../constants/policies";
 
 type RegisterForm = {
   name: string;
@@ -77,6 +78,7 @@ const Register = () => {
   });
   const [status, setStatus] = useState<StatusState>({ type: null, message: "" });
   const [loading, setLoading] = useState<boolean>(false);
+  const [modal, setModal] = useState<"agreement" | "risk" | null>(null);
 
   const defaultPlan = useMemo(() => {
     const requested = searchParams.get("plan") ?? "growth";
@@ -289,7 +291,22 @@ const Register = () => {
               required
             />
             <span>
-              I confirm the details entered are accurate and I agree to the subscription terms, including KYC verification and billing policies.
+              I confirm the details entered are accurate and I agree to the{" "}
+              <button
+                type="button"
+                onClick={() => setModal("agreement")}
+                className="font-semibold text-brand hover:text-brand-dark"
+              >
+                user agreement
+              </button>{" "}
+              and{" "}
+              <button
+                type="button"
+                onClick={() => setModal("risk")}
+                className="font-semibold text-brand hover:text-brand-dark"
+              >
+                trading risk policy
+              </button>.
             </span>
           </label>
 
@@ -322,8 +339,49 @@ const Register = () => {
           <li>3. Need help? Reach us any time at support@svxintelligence.com.</li>
         </ul>
       </div>
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {modal === "agreement" ? "User agreement" : "Trading risk policy"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-5 text-sm leading-relaxed text-slate-600">
+              <ul className="space-y-3">
+                {(modal === "agreement" ? USER_AGREEMENT_POINTS : RISK_POLICY_POINTS).map((item) => (
+                  <li key={item} className="flex gap-2 text-left">
+                    <span>-</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-3">
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                I understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Register;
+
+
+
+
