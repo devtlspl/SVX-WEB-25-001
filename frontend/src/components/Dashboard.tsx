@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { API } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 type DashboardMetric = {
   Label: string;
@@ -60,6 +61,19 @@ const Dashboard = () => {
 
     void loadInsights();
   }, [refreshUser]);
+
+  const planStatus = useMemo(() => {
+    if (user?.isSubscribed) {
+      return { label: "Active", tone: "border-emerald-100 bg-emerald-50 text-emerald-600" };
+    }
+    if (user?.isRegistrationComplete) {
+      return { label: "Pending activation", tone: "border-amber-100 bg-amber-50 text-amber-600" };
+    }
+    return { label: "Setup required", tone: "border-slate-200 bg-slate-100 text-slate-600" };
+  }, [user?.isRegistrationComplete, user?.isSubscribed]);
+  const planLastVerified = user?.paymentVerifiedAt ? new Date(user.paymentVerifiedAt).toLocaleString() : "Awaiting verification";
+  const subscriptionId = user?.subscriptionId ? `#${user.subscriptionId}` : "Not assigned";
+  const planHint = user?.isSubscribed ? "Your usage is billed on the Growth plan." : "Activate a paid plan to unlock live data.";
 
   if (loading) {
     return (
@@ -141,6 +155,37 @@ const Dashboard = () => {
       </div>
 
       <section className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Current plan</h2>
+            <p className="mt-1 text-sm text-slate-500">{planHint}</p>
+          </div>
+          <Link
+            to="/subscribe"
+            className="inline-flex items-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Manage plan
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
+            <span className={`mt-2 inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${planStatus.tone}`}>
+              {planStatus.label}
+            </span>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Subscription reference</p>
+            <p className="mt-2 text-sm font-medium text-slate-900">{subscriptionId}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last verified</p>
+            <p className="mt-2 text-sm font-medium text-slate-900">{planLastVerified}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-100">
         <h2 className="text-lg font-semibold text-slate-900">Account &amp; KYC details</h2>
         <p className="mt-1 text-sm text-slate-500">Keep your regulatory profile current to maintain continuous access.</p>
         <dl className="mt-6 grid gap-4 md:grid-cols-2">
@@ -164,11 +209,11 @@ const Dashboard = () => {
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Proof type</dt>
-            <dd className="mt-1 text-sm font-medium text-slate-900">{user?.governmentIdType ?? "—"}</dd>
+            <dd className="mt-1 text-sm font-medium text-slate-900">{user?.governmentIdType ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Document number</dt>
-            <dd className="mt-1 text-sm font-medium text-slate-900">{user?.governmentIdNumber ?? "—"}</dd>
+            <dd className="mt-1 text-sm font-medium text-slate-900">{user?.governmentIdNumber ?? "-"}</dd>
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Document link</dt>
@@ -201,4 +246,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
