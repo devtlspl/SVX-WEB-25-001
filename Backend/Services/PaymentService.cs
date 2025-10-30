@@ -22,14 +22,15 @@ public class PaymentService : IPaymentService
         _settings = options.Value;
     }
 
-    public async Task<Order> CreateOrderAsync(User user, int amountInPaise)
+    public async Task<Order> CreateOrderAsync(User user, int amountInPaise, string? planId, string? planName, string? currency)
     {
         var amount = amountInPaise <= 0 ? _settings.DefaultAmountInPaise : amountInPaise;
+        var resolvedCurrency = string.IsNullOrWhiteSpace(currency) ? _settings.Currency : currency!;
 
         var options = new Dictionary<string, object>
         {
             { "amount", amount },
-            { "currency", _settings.Currency },
+            { "currency", resolvedCurrency },
             { "receipt", $"rcpt_{Guid.NewGuid():N}" },
             { "payment_capture", 1 }
         };
@@ -37,6 +38,10 @@ public class PaymentService : IPaymentService
         var order = _razorpayClient.Order.Create(options);
 
         user.PendingOrderId = order["id"]?.ToString();
+        user.PendingPlanId = planId;
+        user.PendingPlanName = planName;
+        user.PendingPlanAmount = amount / 100m;
+        user.PendingPlanCurrency = resolvedCurrency;
         _dbContext.Users.Update(user);
         await _dbContext.SaveChangesAsync();
 
@@ -136,7 +141,44 @@ public class PaymentService : IPaymentService
         user.IsSubscribed = true;
         user.SubscriptionId = paymentId;
         user.PendingOrderId = null;
+
+        var activePlanId = user.PendingPlanId ?? user.ActivePlanId;
+        var activePlanName = user.PendingPlanName ?? user.ActivePlanName ?? "Growth";
+        var activePlanAmount = user.PendingPlanAmount ?? user.ActivePlanAmount ?? (_settings.DefaultAmountInPaise / 100m);
+        var activePlanCurrency = user.PendingPlanCurrency ?? user.ActivePlanCurrency ?? _settings.Currency;
+
+        var invoiceAmount = Math.Round(activePlanAmount, 2, MidpointRounding.AwayFromZero);
+
+        var invoice = new Backend.Models.Invoice
+        {
+            UserId = user.Id,
+            PlanId = activePlanId,
+            PlanName = activePlanName,
+            Amount = invoiceAmount,
+            Currency = activePlanCurrency,
+            PaymentId = paymentId,
+            InvoiceNumber = GenerateInvoiceNumber(),
+            IssuedAt = DateTime.UtcNow
+        };
+
+        user.ActivePlanId = activePlanId;
+        user.ActivePlanName = activePlanName;
+        user.ActivePlanAmount = invoiceAmount;
+        user.ActivePlanCurrency = activePlanCurrency;
+        user.PendingPlanId = null;
+        user.PendingPlanName = null;
+        user.PendingPlanAmount = null;
+        user.PendingPlanCurrency = null;
+
+        _dbContext.Invoices.Add(invoice);
         _dbContext.Users.Update(user);
         await _dbContext.SaveChangesAsync();
+    }
+
+    private static string GenerateInvoiceNumber()
+    {
+        var timestamp = DateTime.UtcNow;
+        var suffix = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        return $"INV-{timestamp:yyyyMMdd}-{suffix}";
     }
 }

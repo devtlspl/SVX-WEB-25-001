@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Models;
 
@@ -50,4 +52,28 @@ public class User
 
     [MaxLength(100)]
     public string? PendingOrderId { get; set; }
+
+    [MaxLength(50)]
+    public string? ActivePlanId { get; set; }
+
+    [MaxLength(100)]
+    public string? ActivePlanName { get; set; }
+
+    [Precision(18, 2)]
+    public decimal? ActivePlanAmount { get; set; }
+
+    [MaxLength(10)]
+    public string? ActivePlanCurrency { get; set; }
+
+    [MaxLength(50)]
+    public string? PendingPlanId { get; set; }
+
+    [MaxLength(100)]
+    public string? PendingPlanName { get; set; }
+
+    [Precision(18, 2)]
+    public decimal? PendingPlanAmount { get; set; }
+
+    [MaxLength(10)]
+    public string? PendingPlanCurrency { get; set; }
 }

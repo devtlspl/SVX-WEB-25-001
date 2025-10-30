@@ -1,9 +1,15 @@
 import type { ReactElement, ReactNode } from "react";
-import { Navigate, Route, Routes, Link } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Register from "./components/Register";
 import Login from "./components/Login";
 import Subscribe from "./components/Subscribe";
-import Dashboard from "./components/Dashboard";
+import Dashboard, {
+  DashboardBilling,
+  DashboardData,
+  DashboardOverview,
+  DashboardProfile,
+  DashboardSupport
+} from "./components/Dashboard";
 import { useAuth } from "./context/AuthContext";
 
 type LayoutProps = {
@@ -12,15 +18,17 @@ type LayoutProps = {
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const onDashboard = location.pathname.startsWith("/dashboard");
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:py-4">
           <Link to="/" className="text-lg font-semibold text-brand">
             SVX Intelligence
           </Link>
-          <nav className="flex items-center gap-3 text-sm font-medium">
+          <nav className="flex items-center gap-2 text-sm font-medium">
             {user ? (
               <>
                 {user.isSubscribed && (
@@ -32,7 +40,7 @@ const Layout = ({ children }: LayoutProps) => {
                   </Link>
                 )}
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-                  {user.name} {user.isSubscribed ? "- Subscribed" : user.isRegistrationComplete ? "- Pending renewal" : "- Pending activation"}
+                  {`${user.name} ${user.isSubscribed ? "- Subscribed" : user.isRegistrationComplete ? "- Pending renewal" : "- Pending activation"}`}
                 </span>
                 <Link
                   to="/subscribe"
@@ -67,207 +75,233 @@ const Layout = ({ children }: LayoutProps) => {
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl px-4 py-10">{children}</main>
+      <main className={`mx-auto w-full px-4 py-10 ${onDashboard ? "max-w-6xl" : "max-w-5xl md:max-w-6xl"}`}>
+        {children}
+      </main>
     </div>
   );
 };
 
 const Home = () => {
   const { user } = useAuth();
-  const highlights = [
+
+  const featureCards = [
     {
-      title: "Instant clarity",
-      body: "Connect your product events and see clean, decision-ready dashboards in minutes."
+      title: "Signal clarity in minutes",
+      copy: "Pre-built market templates spotlight top movers, liquidity, and risk without spreadsheet wrangling."
     },
     {
-      title: "Built for busy teams",
-      body: "Plain-language insights, lightweight onboarding, and transparent pricing keep everyone aligned."
+      title: "Built for trading desks",
+      copy: "Plain-language dashboards, saved views, and alerts keep research, trading, and compliance aligned."
     },
     {
-      title: "Secure by default",
-      body: "Razorpay handles billing, and OTP logins protect every session without slowing your team down."
+      title: "Secure team access",
+      copy: "Role-based workspaces, OTP logins, and audit-ready exports protect client data while you scale."
     }
   ];
 
-  const steps = [
-    "Create your account and tell us what you want to track.",
-    "Subscribe to the Growth plan and verify the payment with a one-time OTP.",
-    "Open the dashboard for shareable insights, downloadable reports, and proactive nudges."
+  const launchSteps = [
+    "Choose the markets and instruments you track today, along with the KPIs you report on.",
+    "Sync broker or market data feeds, verify billing through Razorpay, and upload required KYC documents.",
+    "Invite teammates to dashboards that refresh with new trades, P&L, and risk alerts automatically."
   ];
-
-  const about = {
-    intro:
-      "SVX Analytics launched in 2021 with a simple goal: help product-led teams understand adoption without drowning in spreadsheets. We’ve grown into a fully remote crew of product managers, data analysts, and designers who love translating messy usage data into stories that spark action.",
-    pillars: [
-      {
-        heading: "Human-first analytics",
-        copy: "We obsess over plain language, actionable alerts, and dashboards that anyone on your team can understand in a glance."
-      },
-      {
-        heading: "Your data, your rules",
-        copy: "SOC2-ready infrastructure, regional hosting, and granular permissions mean you stay compliant without stalling experiments."
-      },
-      {
-        heading: "Partners, not vendors",
-        copy: "Every customer gets onboarding help, monthly office hours, and a real human in chat when product questions pop up."
-      }
-    ],
-    stats: [
-      { label: "Teams supported", value: "120+" },
-      { label: "Dashboards shipped", value: "2,400" },
-      { label: "Average onboarding time", value: "48 hrs" }
-    ]
-  };
-
-  const testimonial = {
-    quote:
-      "The SVX Growth plan replaced three internal spreadsheets and a weekly status call. We finally have a single place to see what users do right after sign-up and which features keep them coming back.",
-    author: "Mira Patel",
-    role: "Head of Product, Northwind CRM"
-  };
 
   const plans = [
     {
+      id: "starter",
+      title: "Starter",
+      price: "Free",
+      description: "Market digest emails and guided setup.",
+      features: ["Weekly trading digest", "Guided onboarding", "Email support"],
+      cta: "Join waitlist",
+      to: "#",
+      highlighted: false,
+      disabled: true
+    },
+    {
       id: "growth",
-      name: "Growth plan",
-      price: "INR 499 / month",
-      description: "Everything you need to watch product and revenue signals in one simple view.",
-      features: ["Unlimited dashboards", "Role-based access control", "Scheduled email digests"],
-      cta: user ? "Activate now" : "Start with Growth",
-      to: user ? "/subscribe" : "/register?plan=growth"
+      title: "Growth",
+      price: "Rs 499 / month",
+      description: "Live dashboards, alerts, and automated reporting.",
+      features: ["Intraday dashboards", "Trade alerts and webhooks", "Billing and KYC controls"],
+      cta: user?.isSubscribed ? "Go to dashboard" : "Start 14-day trial",
+      to: user?.isSubscribed ? "/dashboard" : "/subscribe",
+      highlighted: true,
+      disabled: false
+    },
+    {
+      id: "pro",
+      title: "Pro Trader",
+      price: "Rs 1,299 / month",
+      description: "Advanced analytics for prop desks and advisory teams.",
+      features: ["Segmented P&L views", "Strategy backtests", "Priority success desk"],
+      cta: user?.isSubscribed ? "Upgrade to Pro" : "Start with Pro",
+      to: "/subscribe",
+      highlighted: false,
+      disabled: false
+    },
+    {
+      id: "institutional",
+      title: "Institutional",
+      price: "Rs 2,999 / month",
+      description: "Multi-entity analytics with custom compliance workflows.",
+      features: ["Multi-account rollups", "Custom compliance reports", "Quarterly strategy reviews"],
+      cta: "Request a call",
+      to: "#",
+      highlighted: false,
+      disabled: true
     },
     {
       id: "enterprise",
-      name: "Enterprise",
-      price: "Let’s talk",
-      description: "For teams that need custom data residency, on-prem hosting, or white-label journeys.",
-      features: ["Dedicated success manager", "Private deployment options", "Custom SLAs"],
-      cta: "Book a walkthrough",
-      to: "/register?plan=growth",
+      title: "Enterprise Plus",
+      price: "Custom",
+      description: "Dedicated delivery pod, bespoke integrations, and SLAs.",
+      features: ["Private deployment options", "Dedicated analyst desk", "Executive-ready client reports"],
+      cta: "Talk to sales",
+      to: "#",
+      highlighted: false,
       disabled: true
     }
   ];
 
   return (
     <div className="space-y-16">
-      <section className="rounded-3xl bg-white p-10 shadow-lg shadow-slate-100">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl space-y-5">
-            <span className="inline-flex items-center rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
-              Meet SVX Analytics
-            </span>
-            <h1 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              Understand how customers use your product—without hunting through spreadsheets.
-            </h1>
-            <p className="text-base text-slate-600">
-              SVX pulls together usage data, payments, support signals, and adoption milestones so you can focus on
-              building experiences that keep customers coming back. No BI degree required—just copy, paste, and insight.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {!user ? (
-                <>
-                  <Link
-                    to="/register?plan=growth"
-                    className="rounded-lg bg-brand px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-dark"
-                  >
-                    Try the Growth plan
-                  </Link>
-                  <Link
-                    to="/login"
-                    className="rounded-lg border border-slate-200 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
-                    I already have an account
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to={user.isSubscribed ? "/dashboard" : "/subscribe"}
-                    className="rounded-lg bg-brand px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-dark"
-                  >
-                    {user.isSubscribed ? "Open dashboard" : "Finish activation"}
-                  </Link>
-                  <Link
-                    to="/subscribe"
-                    className="rounded-lg border border-slate-200 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
-                    View plans
-                  </Link>
-                </>
-              )}
-            </div>
+      <section className="grid gap-10 rounded-3xl bg-white p-10 shadow-lg shadow-brand/5 md:grid-cols-[1.15fr_1fr] md:items-center">
+        <div className="space-y-6">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
+            Trading intelligence, simplified
+          </span>
+          <h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-[2.9rem]">
+            A calmer command centre for trading, research, and client teams.
+          </h1>
+          <p className="max-w-xl text-base leading-relaxed text-slate-600">SVX keeps market data, trade performance, and client exposure in one tidy workspace. No more spreadsheet glue or status decks; just signals your desks can act on in minutes.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            {user ? (
+              <>
+                <Link
+                  to={user.isSubscribed ? "/dashboard" : "/subscribe"}
+                  className="inline-flex items-center rounded-md bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
+                >
+                  {user.isSubscribed ? "Open dashboard" : "Activate workspace"}
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center rounded-md border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Preview layout
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center rounded-md bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
+                >
+                  Create free account
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center rounded-md border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Sign in
+                </Link>
+              </>
+            )}
           </div>
-          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
-            {highlights.map((item) => (
-              <div key={item.title} className="space-y-1 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
-                <p className="leading-relaxed text-slate-600">{item.body}</p>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: "Teams onboarded", value: "120+" },
+              { label: "Dashboards shipped", value: "2,400" },
+              { label: "Avg. setup time", value: "48 hrs" }
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
+                <dd className="text-2xl font-semibold text-slate-900">{stat.value}</dd>
+                <dt className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{stat.label}</dt>
               </div>
             ))}
-          </div>
+          </dl>
+        </div>
+        <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-900/95 p-6 text-slate-100 shadow-inner">
+          <p className="text-sm font-semibold text-white">What gets automated</p>
+          <ul className="space-y-3 text-sm leading-relaxed">
+            <li className="flex items-start gap-3">
+              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>Activation, retention, and revenue signals stitched into tidy dashboards.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>OTP-secured access, Razorpay billing, and KYC workflows handled in-app.</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span>Weekly nudges that highlight churn risk before it bites.</span>
+            </li>
+          </ul>
         </div>
       </section>
 
-      <section className="space-y-8 rounded-3xl bg-slate-50 p-10 shadow-inner shadow-slate-200">
-        <div className="max-w-3xl space-y-4 text-slate-700">
-          <h2 className="text-3xl font-semibold text-slate-900">About SVX Analytics</h2>
-          <p className="text-base leading-relaxed">{about.intro}</p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {about.pillars.map((item) => (
-            <div key={item.heading} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">{item.heading}</h3>
-              <p className="text-sm leading-relaxed text-slate-600">{item.copy}</p>
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 md:grid-cols-3">
-          {about.stats.map((stat) => (
-            <div key={stat.label} className="space-y-2 text-center md:text-left">
-              <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
-              <p>{stat.label}</p>
-            </div>
-          ))}
-        </div>
+      <section className="grid gap-6 md:grid-cols-3">
+        {featureCards.map((card) => (
+          <article key={card.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900">{card.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{card.copy}</p>
+          </article>
+        ))}
       </section>
 
-      <section className="rounded-3xl bg-white p-8 shadow-lg shadow-slate-100">
+      <section className="grid gap-8 rounded-3xl bg-white p-10 shadow-lg shadow-slate-100 md:grid-cols-[1.15fr_1fr] md:items-center">
         <div className="space-y-6">
-          <h2 className="text-2xl font-semibold text-slate-900">How SVX keeps teams aligned</h2>
-          <ol className="grid gap-6 text-sm text-slate-600 md:grid-cols-3">
-            {steps.map((step, index) => (
-              <li key={step} className="flex gap-4 rounded-2xl border border-slate-200 p-5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand">Quick launch</p>
+          <h2 className="text-3xl font-bold leading-tight text-slate-900">Three steps and you're sharing a live dashboard</h2>
+          <ol className="space-y-4 text-sm leading-relaxed text-slate-600">
+            {launchSteps.map((step, index) => (
+              <li key={step} className="flex gap-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
                   {index + 1}
                 </span>
-                <p className="leading-relaxed">{step}</p>
+                <span>{step}</span>
               </li>
             ))}
           </ol>
         </div>
+        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+          <h3 className="text-lg font-semibold text-slate-900">Why trading teams choose SVX</h3>
+          <ul className="mt-2 space-y-3 text-sm text-slate-600">
+            {[
+              "Single workspace to evaluate market signals, trade performance, and client exposure.",
+              "Real-time alerts land in Slack or email so desks can act without status calls.",
+              "Direct access to trading specialists who help configure strategies and reports."
+            ].map((line) => (
+              <li key={line} className="rounded-xl bg-white px-4 py-3 shadow-sm">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
-      <section className="rounded-3xl bg-white p-10 shadow-lg shadow-slate-100">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-3xl space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">Trusted by growing SaaS teams</h2>
-            <p className="text-base leading-relaxed text-slate-600">“{testimonial.quote}”</p>
-            <p className="text-sm font-semibold text-slate-500">
-              {testimonial.author} · {testimonial.role}
+      <section className="rounded-3xl bg-slate-900 p-10 text-slate-200 shadow-lg">
+        <div className="grid gap-10 md:grid-cols-[1.2fr_1fr] md:items-center">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-bold leading-snug text-white">&quot;The signal alerts now do the work of three desks.&quot;</h2>
+            <p className="text-sm text-slate-300">
+              SVX pulls together trade flows, P&L, and client exposure into one view. Our dealers get alerted before spreads widen, risk sees the whole book, and leadership reviews a single market brief each morning.
             </p>
+            <p className="text-sm font-semibold text-emerald-300">Aditi Rao - Trading Lead, Northwind Markets</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
-            <p className="font-semibold text-slate-900">Why they switched to SVX</p>
-            <ul className="mt-3 space-y-2">
-              <li className="flex gap-2">
-                <span className="mt-1 h-2 w-2 rounded-full bg-brand" /> Unified view of sign-up, payment, and retention signals
-              </li>
-              <li className="flex gap-2">
-                <span className="mt-1 h-2 w-2 rounded-full bg-brand" /> OTP login keeps access secure even for distributed teams
-              </li>
-              <li className="flex gap-2">
-                <span className="mt-1 h-2 w-2 rounded-full bg-brand" /> Weekly digests flag churn risks without manual exports
-              </li>
+          <div className="space-y-4 rounded-2xl border border-slate-700 bg-slate-800/60 p-6 text-sm leading-relaxed">
+            <p className="font-semibold text-white">What changed for Northwind</p>
+            <ul className="mt-3 space-y-3">
+              {[
+                "Intraday alerts land in Slack the moment spreads break tolerance.",
+                "Risk teams get automated end-of-day summaries with client P&L.",
+                "Clients receive branded dashboards instead of static PDFs."
+              ].map((line) => (
+                <li key={line} className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
+                  <span>{line}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -275,21 +309,19 @@ const Home = () => {
 
       <section className="space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-slate-900">Choose the plan that fits right now</h2>
-          <p className="mt-3 text-sm text-slate-500">
-            Upgrade or pause anytime. Every subscription includes OTP-secured access and quick-start templates.
-          </p>
+          <h2 className="text-3xl font-bold text-slate-900">Pricing that scales with confidence</h2>
+          <p className="mt-3 text-sm text-slate-500">Start for free, switch on live dashboards when you're ready.</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {plans.map((plan) => (
             <div
               key={plan.id}
-              className={`flex h-full flex-col rounded-2xl border bg-white p-6 shadow-sm ${
-                plan.id === "growth" ? "border-brand shadow-brand/10" : "border-slate-200"
+              className={`flex h-full flex-col rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
+                plan.highlighted ? "border-brand shadow-brand/10" : "border-slate-200"
               }`}
             >
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-slate-900">{plan.name}</h3>
+              <div className="space-y-1.5">
+                <h3 className="text-xl font-semibold text-slate-900">{plan.title}</h3>
                 <p className="text-sm text-slate-500">{plan.description}</p>
                 <p className="text-lg font-semibold text-slate-900">{plan.price}</p>
               </div>
@@ -297,24 +329,48 @@ const Home = () => {
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex gap-3">
                     <span className="mt-1 h-2 w-2 rounded-full bg-brand" />
-                    {feature}
+                    <span>{feature}</span>
                   </li>
                 ))}
               </ul>
               {plan.disabled ? (
-                <span className="mt-8 inline-flex items-center justify-center rounded-lg border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-400">
+                <span className="mt-8 inline-flex items-center justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-400">
                   {plan.cta}
                 </span>
               ) : (
                 <Link
                   to={plan.to}
-                  className="mt-8 inline-flex items-center justify-center rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
+                  className="mt-8 inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
                 >
                   {plan.cta}
                 </Link>
               )}
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-lg shadow-slate-100">
+        <h2 className="text-3xl font-bold text-slate-900">Ready when you are</h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600">
+          Spin up your workspace in minutes and invite your team once the dashboards click. Our specialists are ready to help
+          with instrumentation, Razorpay setup, or migration planning.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link
+            to={user ? "/dashboard" : "/register"}
+            className="inline-flex items-center rounded-md bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-dark"
+          >
+            {user ? "Open your workspace" : "Create an account"}
+          </Link>
+          {!user && (
+            <Link
+              to="/login"
+              className="inline-flex items-center rounded-md border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </section>
     </div>
@@ -368,7 +424,13 @@ const App = () => (
             <Dashboard />
           </SubscribedRoute>
         }
-      />
+      >
+        <Route index element={<DashboardOverview />} />
+        <Route path="data" element={<DashboardData />} />
+        <Route path="billing" element={<DashboardBilling />} />
+        <Route path="profile" element={<DashboardProfile />} />
+        <Route path="support" element={<DashboardSupport />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </Layout>

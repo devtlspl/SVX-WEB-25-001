@@ -110,11 +110,11 @@ const Login = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-6">
-      <div className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-100">
-        <h2 className="text-2xl font-bold text-slate-900">Secure login</h2>
+    <div className="mx-auto w-full max-w-lg space-y-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+        <h1 className="text-2xl font-semibold text-slate-900">Welcome back</h1>
         <p className="mt-2 text-sm text-slate-500">
-          Use your registered mobile number to receive a one-time password. Each number supports only one active session.
+          Sign in with your mobile number. We&apos;ll send a one-time password to keep your workspace secure.
         </p>
 
         {step === "credentials" ? (
@@ -161,7 +161,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
+              className="flex w-full justify-center rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
             >
               {loading ? "Sending OTP..." : "Request OTP"}
             </button>
@@ -209,7 +209,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
+              className="flex w-full justify-center rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
             >
               {loading ? "Verifying..." : "Verify OTP"}
             </button>
@@ -219,21 +219,23 @@ const Login = () => {
                 setStep("credentials");
                 setStatus({ type: null, message: "" });
               }}
-              className="flex w-full justify-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="flex w-full justify-center rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
               Back
             </button>
           </form>
         )}
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-        <p>
-          Need access?{" "}
-          <Link to="/register" className="font-semibold text-brand hover:text-brand-dark">
-            Create an account
-          </Link>{" "}
-          and complete your subscription payment to activate your workspace.
-        </p>
+      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <p className="font-semibold text-slate-900">Need an account?</p>
+          <p>
+            <Link to="/register" className="font-semibold text-brand hover:text-brand-dark">
+              Create one in minutes
+            </Link>{" "}
+            and complete a subscription whenever you are ready.
+          </p>
+        </div>
       </div>
     </div>
   );

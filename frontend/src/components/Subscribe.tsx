@@ -13,6 +13,7 @@ const Subscribe = () => {
   const { user, refreshUser } = useAuth();
   const [status, setStatus] = useState<StatusState>({ type: null, message: "" });
   const [loading, setLoading] = useState<boolean>(false);
+
   const plans = useMemo(
     () => [
       {
@@ -20,29 +21,58 @@ const Subscribe = () => {
         name: "Starter",
         description: "Weekly digest to stay in the loop.",
         amountPaise: 0,
-        price: "₹0"
+        price: "Rs 0",
+        helper: "Join the waitlist to unlock this tier soon.",
+        currency: "INR",
+        disabled: true
       },
       {
         id: "growth",
         name: "Growth",
-        description: "Unlock live dashboards and exports.",
+        description: "Unlock live dashboards, exports, and automations.",
         amountPaise: 49900,
-        price: "₹499"
+        price: "Rs 499 / month",
+        helper: "Best for trading desks delivering actionable reports.",
+        currency: "INR"
+      },
+      {
+        id: "pro",
+        name: "Pro Trader",
+        description: "Advanced analytics for prop desks and advisory teams.",
+        amountPaise: 129900,
+        price: "Rs 1,299 / month",
+        helper: "Includes strategy backtesting and segmented P&L views.",
+        currency: "INR"
+      },
+      {
+        id: "institutional",
+        name: "Institutional",
+        description: "Multi-entity analytics with custom compliance workflows.",
+        amountPaise: 299900,
+        price: "Rs 2,999 / month",
+        helper: "Enable for multi-account reporting, subject to review.",
+        currency: "INR",
+        disabled: true
       },
       {
         id: "enterprise",
-        name: "Enterprise",
+        name: "Enterprise Plus",
         description: "Tailored deployment with concierge onboarding.",
         amountPaise: 0,
-        price: "Talk to sales"
+        price: "Custom",
+        helper: "Talk to sales for bespoke rollout.",
+        currency: "INR",
+        disabled: true
       }
     ],
     []
   );
+
   const preferredPlan = useMemo(() => {
     const saved = localStorage.getItem("preferredPlan");
     return saved ?? "growth";
   }, []);
+
   const initialPlan = useMemo(() => {
     const guess = plans.find((plan) => plan.id === preferredPlan);
     if (guess && guess.amountPaise > 0) {
@@ -50,6 +80,7 @@ const Subscribe = () => {
     }
     return "growth";
   }, [plans, preferredPlan]);
+
   const [selectedPlanId, setSelectedPlanId] = useState<string>(initialPlan);
   const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) ?? plans[1];
 
@@ -58,7 +89,7 @@ const Subscribe = () => {
     if (!razorpayLoaded) {
       setStatus({
         type: "error",
-        message: "Razorpay script not loaded. Please check network connectivity."
+        message: "Razorpay script not loaded. Please refresh and try again."
       });
     }
   }, []);
@@ -67,15 +98,17 @@ const Subscribe = () => {
     setStatus({ type: null, message: "" });
     setLoading(true);
     try {
-      if (selectedPlan.amountPaise <= 0) {
-        setStatus({ type: "error", message: "Please choose an active plan to continue with checkout." });
+      if (selectedPlan.disabled || selectedPlan.amountPaise <= 0) {
+        setStatus({ type: "error", message: "Please choose an active paid plan to continue with checkout." });
         return;
       }
       const response = await API.post<RazorpayOrderPayload>("/payment/create-order", {
-        amountInPaise: selectedPlan.amountPaise > 0 ? selectedPlan.amountPaise : undefined
+        amountInPaise: selectedPlan.amountPaise,
+        planId: selectedPlan.id,
+        planName: selectedPlan.name,
+        currency: selectedPlan.currency ?? "INR"
       });
       const order = response.data;
-      const createdOrderId = order.orderId;
 
       if (typeof window.Razorpay === "undefined") {
         setStatus({
@@ -89,16 +122,13 @@ const Subscribe = () => {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
-        name: "Subscription Access",
-        description: "Full access subscription",
-        notes: {
-          plan: selectedPlan.name
-        },
+        name: "SVX Intelligence",
+        description: `${selectedPlan.name} subscription`,
+        notes: { plan: selectedPlan.name },
         order_id: order.orderId,
         handler: async (razorpayResponse: RazorpayHandlerResponse) => {
-          console.log("Razorpay response", razorpayResponse);
           const paymentId = razorpayResponse.razorpay_payment_id;
-          const orderId = razorpayResponse.razorpay_order_id ?? createdOrderId ?? null;
+          const orderId = razorpayResponse.razorpay_order_id ?? order.orderId ?? null;
           const signature = razorpayResponse.razorpay_signature ?? null;
 
           if (!paymentId) {
@@ -126,28 +156,19 @@ const Subscribe = () => {
           }
         },
         prefill: {
-          name: user?.name ?? null,
-          email: user?.email ?? null
-        },
-        theme: {
-          color: "#2563eb"
+          name: user?.name ?? "",
+          email: user?.email ?? "",
+          contact: user?.phoneNumber ?? ""
         }
       };
 
       const razorpay = new window.Razorpay(options);
-      razorpay.on("payment.failed", (response) => {
-        console.error("Razorpay payment failed", response);
-        setStatus({
-          type: "error",
-          message: response.error?.description ?? "Payment was not completed. Please try again."
-        });
-      });
       razorpay.open();
     } catch (error: unknown) {
       const message =
         isAxiosError<{ message?: string }>(error) && error.response?.data?.message
           ? error.response.data.message
-          : "Unable to initiate payment.";
+          : "Unable to initiate payment. Please try again.";
       setStatus({ type: "error", message });
     } finally {
       setLoading(false);
@@ -155,25 +176,52 @@ const Subscribe = () => {
   };
 
   const cancelSubscription = async () => {
-    setStatus({ type: "error", message: "Razorpay cancellation via webhook is pending implementation." });
+    setLoading(true);
+    setStatus({ type: null, message: "" });
+    try {
+      await API.post("/payment/cancel");
+      setStatus({ type: "success", message: "Subscription cancelled. Access continues until the end of the billing period." });
+      await refreshUser();
+    } catch (error: unknown) {
+      const message =
+        isAxiosError<{ message?: string }>(error) && error.response?.data?.message
+          ? error.response.data.message
+          : "Unable to cancel right now. Please try again.";
+      setStatus({ type: "error", message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-      <section className="rounded-2xl bg-white p-8 shadow-lg shadow-slate-100">
-        <h2 className="text-3xl font-semibold text-slate-900">Subscription Dashboard</h2>
-        <p className="mt-2 text-slate-500">
-          Secure payments powered by Razorpay. Select a plan, confirm payment, and your dashboard unlocks instantly.
-        </p>
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Manage your subscription</h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Activate the Growth plan to unlock live dashboards, exports, and automation. You can switch or cancel anytime.
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              user?.isSubscribed
+                ? "border border-emerald-100 bg-emerald-50 text-emerald-600"
+                : "border border-amber-100 bg-amber-50 text-amber-600"
+            }`}
+          >
+            {user?.isSubscribed ? "Active" : "Inactive"}
+          </span>
+        </div>
         {!user?.isRegistrationComplete && (
-          <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-            Your account is pending activation. Complete the payment below to enable OTP login and data access.
+          <div className="mt-4 rounded-md border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            Your account is pending activation. Complete payment to enable OTP login and live data access.
           </div>
         )}
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {plans.map((plan) => {
-            const disabled = plan.amountPaise === 0;
+            const disabled = plan.disabled ?? plan.amountPaise <= 0;
             const isSelected = plan.id === selectedPlan.id;
             return (
               <button
@@ -185,9 +233,7 @@ const Subscribe = () => {
                   localStorage.setItem("preferredPlan", plan.id);
                 }}
                 className={`flex h-full flex-col rounded-xl border p-5 text-left transition ${
-                  isSelected
-                    ? "border-brand bg-brand/5 shadow-sm shadow-brand/20"
-                    : "border-slate-200 bg-slate-50 hover:border-brand/50 hover:bg-brand/5"
+                  isSelected ? "border-brand bg-brand/5 shadow-sm shadow-brand/20" : "border-slate-200 bg-slate-50 hover:border-brand/40 hover:bg-brand/5"
                 } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
               >
                 <div className="flex items-center justify-between">
@@ -196,37 +242,30 @@ const Subscribe = () => {
                 </div>
                 <p className="mt-2 text-sm text-slate-600">{plan.description}</p>
                 <p className="mt-6 text-2xl font-bold text-slate-900">{plan.price}</p>
-                {disabled && <span className="mt-4 text-xs font-medium text-slate-500">Talk to sales for a tailored rollout.</span>}
+                {plan.helper && <span className="mt-4 text-xs font-medium text-slate-500">{plan.helper}</span>}
               </button>
             );
           })}
         </div>
-        <div className="mt-8 grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-6">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Plan</span>
-            <span className="text-sm font-medium text-slate-600">{selectedPlan.name}</span>
+
+        <div className="mt-8 grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="font-semibold uppercase tracking-wide">Selected plan</span>
+            <span className="font-medium text-slate-900">{selectedPlan.name}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Amount</span>
-            <span className="text-2xl font-bold text-slate-900">{selectedPlan.price}</span>
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="font-semibold uppercase tracking-wide">Amount</span>
+            <span className="text-xl font-semibold text-slate-900">{selectedPlan.price}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold uppercase tracking-wide text-slate-500">Status</span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                user?.isSubscribed
-                  ? "border border-emerald-100 bg-emerald-50 text-emerald-600"
-                  : "border border-amber-100 bg-amber-50 text-amber-600"
-              }`}
-            >
-              {user?.isSubscribed ? "Active" : "Inactive"}
-            </span>
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="font-semibold uppercase tracking-wide">Billing email</span>
+            <span className="font-medium text-slate-900">{user?.email ?? "-"}</span>
           </div>
         </div>
 
         {status.type && (
           <div
-            className={`mt-6 rounded-lg border px-4 py-3 text-sm ${
+            className={`mt-6 rounded-md border px-4 py-3 text-sm ${
               status.type === "error"
                 ? "border-rose-100 bg-rose-50 text-rose-600"
                 : "border-emerald-100 bg-emerald-50 text-emerald-600"
@@ -240,52 +279,46 @@ const Subscribe = () => {
           <button
             onClick={openCheckout}
             disabled={loading}
-            className="rounded-lg bg-brand px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
+            className="rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-wait disabled:bg-brand/60"
             type="button"
           >
-            {user?.isSubscribed ? "Renew Subscription" : selectedPlan.amountPaise > 0 ? "Activate Subscription" : "Confirm Plan"}
+            {user?.isSubscribed ? "Renew subscription" : selectedPlan.disabled || selectedPlan.amountPaise <= 0 ? "Confirm plan" : "Activate subscription"}
           </button>
           {user?.isSubscribed && (
             <button
               onClick={cancelSubscription}
               type="button"
-              className="rounded-lg border border-slate-200 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="rounded-md border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              disabled={loading}
             >
-              Cancel Plan
+              Cancel plan
             </button>
           )}
         </div>
       </section>
 
-      <aside className="rounded-2xl bg-white p-7 shadow-lg shadow-slate-100">
-        <h3 className="text-lg font-semibold text-slate-900">How payment verification works</h3>
-        <ol className="mt-4 space-y-4 text-sm text-slate-600">
+      <section className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">How payment verification works</h2>
+        <ol className="mt-3 space-y-3">
           <li className="flex gap-3">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              1
-            </span>
-            Create an order via the secure ASP.NET Web API endpoint.
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">1</span>
+            Create an order via our ASP.NET Web API endpoint.
           </li>
           <li className="flex gap-3">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              2
-            </span>
-            Launch Razorpay Checkout. After payment success, receive payment identifiers.
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">2</span>
+            Complete payment through Razorpay Checkout and receive the payment identifiers.
           </li>
           <li className="flex gap-3">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
-              3
-            </span>
-            API verifies the HMAC signature and persists subscription status.
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">3</span>
+            SVX verifies the signature, activates your plan, and updates KYC + billing status.
           </li>
         </ol>
-        <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-5">
-          <p className="text-sm text-slate-600">
-            Need automated cancellation when subscriptions lapse? Configure the optional Razorpay webhook endpoint to
-            reconcile plan state based on Razorpay events.
+        <div className="mt-5 rounded-lg border border-slate-100 bg-slate-50 p-4">
+          <p>
+            Need automated cancellation or invoicing? Configure the optional Razorpay webhooks so plan status stays in sync when payments change.
           </p>
         </div>
-      </aside>
+      </section>
     </div>
   );
 };

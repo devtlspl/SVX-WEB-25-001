@@ -34,7 +34,7 @@ public class PaymentController : ControllerBase
             return Unauthorized();
         }
 
-        var order = await _paymentService.CreateOrderAsync(user, request.AmountInPaise ?? 0);
+        var order = await _paymentService.CreateOrderAsync(user, request.AmountInPaise ?? 0, request.PlanId, request.PlanName, request.Currency);
         return Ok(new
         {
             orderId = order["id"],
@@ -94,6 +94,9 @@ public class PaymentController : ControllerBase
     public class CreateOrderRequest
     {
         public int? AmountInPaise { get; set; }
+        public string? PlanId { get; set; }
+        public string? PlanName { get; set; }
+        public string? Currency { get; set; }
     }
 
     public class VerifyPaymentRequest

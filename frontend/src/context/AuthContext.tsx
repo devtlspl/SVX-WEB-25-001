@@ -21,6 +21,10 @@ export type User = {
   kycVerified: boolean;
   subscriptionId?: string | null;
   paymentVerifiedAt?: string | null;
+  activePlanId?: string | null;
+  activePlanName?: string | null;
+  activePlanAmount?: number | null;
+  activePlanCurrency?: string | null;
   governmentIdType?: string | null;
   governmentIdNumber?: string | null;
   governmentDocumentUrl?: string | null;
