@@ -15,8 +15,12 @@ public class UserOtp
     public User User { get; set; } = default!;
 
     [Required]
-    [MaxLength(6)]
-    public string Code { get; set; } = default!;
+    [MaxLength(256)]
+    public string CodeHash { get; set; } = default!;
+
+    [Required]
+    [MaxLength(44)]
+    public string Salt { get; set; } = default!;
 
     [Required]
     public DateTime ExpiresAt { get; set; }

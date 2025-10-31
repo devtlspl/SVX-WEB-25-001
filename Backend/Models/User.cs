@@ -56,6 +56,9 @@ public class User
     [MaxLength(50)]
     public string? ActivePlanId { get; set; }
 
+    [ForeignKey(nameof(ActivePlanId))]
+    public Plan? ActivePlan { get; set; }
+
     [MaxLength(100)]
     public string? ActivePlanName { get; set; }
 
@@ -67,6 +70,9 @@ public class User
 
     [MaxLength(50)]
     public string? PendingPlanId { get; set; }
+
+    [ForeignKey(nameof(PendingPlanId))]
+    public Plan? PendingPlan { get; set; }
 
     [MaxLength(100)]
     public string? PendingPlanName { get; set; }
@@ -80,4 +86,12 @@ public class User
     public DateTime? TermsAcceptedAt { get; set; }
 
     public DateTime? RiskPolicyAcceptedAt { get; set; }
+
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
+    public ICollection<UserPlanHistory> PlanHistory { get; set; } = new List<UserPlanHistory>();
+
+    public ICollection<UserSession> Sessions { get; set; } = new List<UserSession>();
+
+    public ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
 }

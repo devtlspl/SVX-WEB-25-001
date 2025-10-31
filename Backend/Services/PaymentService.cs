@@ -142,10 +142,17 @@ public class PaymentService : IPaymentService
         user.SubscriptionId = paymentId;
         user.PendingOrderId = null;
 
-        var activePlanId = user.PendingPlanId ?? user.ActivePlanId;
+        var resolvedPlanId = user.PendingPlanId ?? user.ActivePlanId;
+        Plan? plan = null;
+        if (!string.IsNullOrWhiteSpace(resolvedPlanId))
+        {
+            plan = await _dbContext.Plans.SingleOrDefaultAsync(p => p.Id == resolvedPlanId);
+        }
+
+        var activePlanId = resolvedPlanId ?? plan?.Id;
         var activePlanName = user.PendingPlanName ?? user.ActivePlanName ?? "Growth";
-        var activePlanAmount = user.PendingPlanAmount ?? user.ActivePlanAmount ?? (_settings.DefaultAmountInPaise / 100m);
-        var activePlanCurrency = user.PendingPlanCurrency ?? user.ActivePlanCurrency ?? _settings.Currency;
+        var activePlanAmount = user.PendingPlanAmount ?? user.ActivePlanAmount ?? plan?.Price ?? (_settings.DefaultAmountInPaise / 100m);
+        var activePlanCurrency = user.PendingPlanCurrency ?? user.ActivePlanCurrency ?? plan?.Currency ?? _settings.Currency;
 
         var invoiceAmount = Math.Round(activePlanAmount, 2, MidpointRounding.AwayFromZero);
 
@@ -169,6 +176,30 @@ public class PaymentService : IPaymentService
         user.PendingPlanName = null;
         user.PendingPlanAmount = null;
         user.PendingPlanCurrency = null;
+
+        var activeHistories = await _dbContext.UserPlanHistories
+            .Where(history => history.UserId == user.Id && history.Status == "active")
+            .ToListAsync();
+
+        foreach (var history in activeHistories)
+        {
+            history.Status = "ended";
+            history.CancelledAt = DateTime.UtcNow;
+        }
+
+        if (!string.IsNullOrWhiteSpace(activePlanId))
+        {
+            _dbContext.UserPlanHistories.Add(new UserPlanHistory
+            {
+                UserId = user.Id,
+                PlanId = activePlanId!,
+                Status = "active",
+                Amount = invoiceAmount,
+                Currency = activePlanCurrency,
+                SubscribedAt = DateTime.UtcNow,
+                Notes = $"Payment verified via Razorpay payment {paymentId}."
+            });
+        }
 
         _dbContext.Invoices.Add(invoice);
         _dbContext.Users.Update(user);

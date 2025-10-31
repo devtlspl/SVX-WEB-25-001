@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Linq;
 using Backend.Models;
+using Backend.Options;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -17,7 +20,7 @@ public class JwtService : IJwtService
         _settings = options.Value;
     }
 
-    public string GenerateToken(User user, string sessionId)
+    public string GenerateToken(User user, string sessionId, IEnumerable<string>? roles = null)
     {
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
@@ -42,7 +45,19 @@ public class JwtService : IJwtService
             claims.Add(new Claim("subscriptionId", user.SubscriptionId!));
         }
 
-        if (user.IsAdmin)
+        var roleSet = roles is null
+            ? Array.Empty<string>()
+            : roles.Where(r => !string.IsNullOrWhiteSpace(r))
+                   .Select(r => r.Trim().ToLowerInvariant())
+                   .Distinct(StringComparer.OrdinalIgnoreCase)
+                   .ToArray();
+
+        foreach (var role in roleSet)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        if (user.IsAdmin && !roleSet.Contains("admin", StringComparer.OrdinalIgnoreCase))
         {
             claims.Add(new Claim(ClaimTypes.Role, "admin"));
         }
@@ -56,12 +71,4 @@ public class JwtService : IJwtService
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-}
-
-public class JwtSettings
-{
-    public string Key { get; set; } = string.Empty;
-    public string Issuer { get; set; } = string.Empty;
-    public string? Audience { get; set; }
-    public int ExpirationMinutes { get; set; } = 60 * 24 * 7;
 }

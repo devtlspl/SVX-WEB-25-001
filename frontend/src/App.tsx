@@ -1,4 +1,4 @@
-ï»¿import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Register from "./components/Register";
 import Login from "./components/Login";
@@ -10,6 +10,7 @@ import Dashboard, {
   DashboardProfile,
   DashboardSupport
 } from "./components/Dashboard";
+import { AdminLayout, AdminOverview, AdminPlans, AdminUsers } from "./components/admin";
 import { useAuth } from "./context/AuthContext";
 
 type LayoutProps = {
@@ -20,6 +21,8 @@ const Layout = ({ children }: LayoutProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const onDashboard = location.pathname.startsWith("/dashboard");
+  const onAdmin = location.pathname.startsWith("/admin");
+  const mainWidthClass = onDashboard || onAdmin ? "max-w-6xl" : "max-w-5xl md:max-w-6xl";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -34,9 +37,21 @@ const Layout = ({ children }: LayoutProps) => {
                 {user.isSubscribed && (
                   <Link
                     to="/dashboard"
-                    className="rounded-md border border-transparent px-4 py-2 text-slate-700 transition hover:bg-slate-100"
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                      onDashboard ? "bg-brand text-white hover:bg-brand-dark" : "border border-transparent text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
                     Dashboard
+                  </Link>
+                )}
+                {user.isAdmin && (
+                  <Link
+                    to="/admin"
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                      onAdmin ? "bg-slate-900 text-white hover:bg-slate-800" : "border border-transparent text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    Admin
                   </Link>
                 )}
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
@@ -75,7 +90,7 @@ const Layout = ({ children }: LayoutProps) => {
           </nav>
         </div>
       </header>
-      <main className={`mx-auto w-full px-4 py-10 ${onDashboard ? "max-w-6xl" : "max-w-5xl md:max-w-6xl"}`}>
+      <main className={`mx-auto w-full px-4 py-10 ${mainWidthClass}`}>
         {children}
       </main>
     </div>
@@ -419,9 +434,9 @@ const Home = () => {
             and data retention so your teams know exactly how the platform behaves.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-600">
-            <li>â€¢ Access is personal and OTP secured.</li>
-            <li>â€¢ Plans renew automatically unless cancelled.</li>
-            <li>â€¢ Data exports remain available while subscriptions stay active.</li>
+            <li>• Access is personal and OTP secured.</li>
+            <li>• Plans renew automatically unless cancelled.</li>
+            <li>• Data exports remain available while subscriptions stay active.</li>
           </ul>
           <Link
             to="/support"
@@ -438,9 +453,9 @@ const Home = () => {
             Always validate insights against your internal controls and risk guidelines.
           </p>
           <ul className="mt-4 space-y-2 text-sm text-slate-600">
-            <li>â€¢ Markets can move quickly; review alerts before acting.</li>
-            <li>â€¢ Keep compliance teams copied on automation workflows.</li>
-            <li>â€¢ Contact support if you spot unusual data behaviour.</li>
+            <li>• Markets can move quickly; review alerts before acting.</li>
+            <li>• Keep compliance teams copied on automation workflows.</li>
+            <li>• Contact support if you spot unusual data behaviour.</li>
           </ul>
           <Link
             to="/support"
@@ -504,6 +519,17 @@ const SubscribedRoute = ({ children }: ProtectedRouteProps) => {
   return children;
 };
 
+const AdminRoute = ({ children }: ProtectedRouteProps) => {
+  const { user, token } = useAuth();
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!user?.isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
 const App = () => (
   <Layout>
     <Routes>
@@ -532,11 +558,25 @@ const App = () => (
         <Route path="profile" element={<DashboardProfile />} />
         <Route path="support" element={<DashboardSupport />} />
       </Route>
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<AdminOverview />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="plans" element={<AdminPlans />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </Layout>
 );
 
 export default App;
+
 
 

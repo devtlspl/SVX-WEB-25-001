@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using Backend.Data;
 using Backend.Models;
 using Backend.Services;
@@ -87,13 +88,12 @@ public class AuthController : ControllerBase
         try
         {
             var result = await _authService.RequestLoginOtpAsync(request.PhoneNumber, request.Password);
-            return Ok(new
-            {
-                message = $"OTP sent to {result.MaskedPhoneNumber}",
-                expiresAt = result.ExpiresAt,
-                isActive = result.IsRegistrationComplete,
-                debugCode = result.DebugCode
-            });
+            var response = new RequestOtpResponse(
+                Message: $"OTP sent to {result.MaskedPhoneNumber}",
+                ExpiresAt: result.ExpiresAt,
+                IsActive: result.IsRegistrationComplete,
+                DebugCode: result.DebugCode);
+            return Ok(response);
         }
         catch (InvalidOperationException ex)
         {
@@ -208,6 +208,12 @@ public class AuthController : ControllerBase
     }
 
     public record LoginResponse(string Token, UserResponse User);
+
+    public record RequestOtpResponse(
+        string Message,
+        DateTime ExpiresAt,
+        bool IsActive,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? DebugCode);
 
     public record UserResponse(
         Guid Id,
